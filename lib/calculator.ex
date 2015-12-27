@@ -21,43 +21,49 @@ defmodule Calculator.CLI do
   end
 end
 
-# Find inner most parens
-# Slice from starting parent to ending paren
-# Split on operator for mdas
-# Calculate
-# replace paren range with return val
-# Repeat
+# Start from inner most parens
+# Replace paren range with calc
+# Move out a level of parens
+# Repeate
+
 defmodule Calculator do
   require IEx
 
-  def calculate(string) do
-    string |> format_string |> create_equation #|> compute
+  def calculate(equation_string) do
+    equation_string
+    |> strip_whitespace
+    |> solve(~r/(\d+)(\*)(\d+)/)
+    |> solve(~r/(\d+)(\/)(\d+)/)
+    |> solve(~r/(\d+)(\+)(\d+)/)
+    |> solve(~r/(\d+)(\-)(\d+)/)
   end
 
-  def format_string(string), do: String.replace(string, " ", "")
+  def strip_whitespace(equation_string), do: String.replace(equation_string, " ", "")
 
-  def create_equation(string) do
-    equation_format = ~r/(\d+)(\*|\/|\+|\-)(\d+)/
+  def solve(equation_string, equation_regex), do: _solve(equation_string, equation_regex)
 
-    str = Regex.replace(equation_format, string, fn _,l,o,r ->
-      res = compute {to_int(l), o, to_int(r)}
-      "#{res}"
-    end)
+  defp _solve(equation_string, equation_regex) do
+    str = _replace_equation_with_computation(equation_string, equation_regex)
 
-    if Regex.match?(equation_format, str) do
-      create_equation(str)
-    else
-      str
+    cond do
+      Regex.match?(equation_regex, str) -> _solve(str, equation_regex)
+      str -> str
+      nil -> equation_string
     end
   end
 
-  def to_int str do
+  defp _replace_equation_with_computation(equation_string, equation_regex) do
+    Regex.replace(equation_regex, equation_string, fn _,l,o,r ->
+      "#{_compute {_to_int(l), o, _to_int(r)}}"
+    end)
+  end
+
+  defp _compute({left, "*", right}), do: left * right
+  defp _compute({left, "/", right}), do: div(left, right)
+  defp _compute({left, "+", right}), do: left + right
+  defp _compute({left, "-", right}), do: left - right
+  defp _to_int str do
     {int, _ } = Integer.parse(str)
     int
   end
-
-  def compute({left, "*", right}), do: left * right
-  def compute({left, "/", right}), do: left / right
-  def compute({left, "+", right}), do: left + right
-  def compute({left, "-", right}), do: left - right
 end
