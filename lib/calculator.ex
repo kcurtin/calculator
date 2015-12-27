@@ -21,16 +21,15 @@ defmodule Calculator.CLI do
   end
 end
 
+# Find inner most parens
+# Slice from starting parent to ending paren
+# Split on operator for mdas
+# Calculate
+# replace paren range with return val
+# Repeat
 defmodule Calculator do
   require IEx
 
-  # Find inner most parens
-  # Slice from starting parent to ending paren
-
-  # Split on operator for mdas
-  # Calculate
-  # replace paren range with return val
-  # Repeat
   def calculate(string) do
     string |> format_string |> create_equation #|> compute
   end
@@ -40,10 +39,16 @@ defmodule Calculator do
   def create_equation(string) do
     equation_format = ~r/(\d+)(\*|\/|\+|\-)(\d+)/
 
-    Regex.replace(equation_format, string, fn _,l,o,r ->
+    str = Regex.replace(equation_format, string, fn _,l,o,r ->
       res = compute {to_int(l), o, to_int(r)}
       "#{res}"
     end)
+
+    if Regex.match?(equation_format, str) do
+      create_equation(str)
+    else
+      str
+    end
   end
 
   def to_int str do
@@ -56,32 +61,3 @@ defmodule Calculator do
   def compute({left, "+", right}), do: left + right
   def compute({left, "-", right}), do: left - right
 end
-  # def calculate_expression(list) do
-  #   operators = [ "*", "/", "+", "-"]
-  #
-  #   vals = Enum.map(operators, fn(op) -> compute_for(list, op) end)
-  #   Enum.filter(vals, fn(x) -> x != nil end)
-  # end
-  #
-  # def compute_for(list, op) do
-  #   operator_index = Enum.find_index(list, fn(n) -> n == op end)
-  #
-  #   if operator_index do
-  #     left = Enum.at(list, operator_index - 1)
-  #     operator = Enum.at(list, operator_index)
-  #     right = Enum.at(list, operator_index + 1)
-  #
-  #
-  #     compute {left, operator, right}
-  #   end
-  # end
-  #
-  #   # operator_regex = ~r/\+|\-|\*|\//
-  #   # [operator] = Regex.run(operator_regex, string)
-  #   #
-  #   # [{left, _}, {right, _}] =
-  #   #   String.split(string, operator_regex, trim: true)
-  #   #     |> Enum.map(&(String.strip(&1)))
-  #   #     |> Enum.map(&(Integer.parse(&1)))
-  #   #
-  #   # compute {left, operator, right}
