@@ -27,34 +27,31 @@ end
 # Repeate
 
 defmodule Calculator do
-  require IEx
+  @regexes [
+    {"*", ~r/(\d+)(\*)(\d+)/},
+    {"/", ~r/(\d+)(\/)(\d+)/},
+    {"+", ~r/(\d+)(\+)(\d+)/},
+    {"-", ~r/(\d+)(\-)(\d+)/}
+  ]
 
-  def calculate(equation_string) do
-    equation_string
-    |> strip_whitespace
-    |> solve(~r/(\d+)(\*)(\d+)/)
-    |> solve(~r/(\d+)(\/)(\d+)/)
-    |> solve(~r/(\d+)(\+)(\d+)/)
-    |> solve(~r/(\d+)(\-)(\d+)/)
+  def calculate(equation) do
+    equation
+    |> String.replace(" ", "")
+    |> _solve("*", :continue)
   end
 
-  def strip_whitespace(equation_string), do: String.replace(equation_string, " ", "")
+  # inner_parens_regex = ~r/\(([^()]+)\)/
+  defp _solve(equation, :done),          do: equation
+  defp _solve(equation, op, :continue),  do: _solve(equation, _match?(op, equation), op)
+  defp _solve(equation, :match, op),     do: _solve(_compute_eq(equation, op), op, :continue)
+  defp _solve(equation, :no_match, "*"), do: _solve(equation, "/", :continue)
+  defp _solve(equation, :no_match, "/"), do: _solve(equation, "+", :continue)
+  defp _solve(equation, :no_match, "+"), do: _solve(equation, "-", :continue)
+  defp _solve(equation, :no_match, "-"), do: _solve(equation, :done)
 
-  def solve(equation_string, equation_regex), do: _solve(equation_string, equation_regex)
-
-  defp _solve(equation_string, equation_regex) do
-    str = _replace_equation_with_computation(equation_string, equation_regex)
-
-    cond do
-      Regex.match?(equation_regex, str) -> _solve(str, equation_regex)
-      str -> str
-      nil -> equation_string
-    end
-  end
-
-  defp _replace_equation_with_computation(equation_string, equation_regex) do
-    Regex.replace(equation_regex, equation_string, fn _,l,o,r ->
-      "#{_compute {_to_int(l), o, _to_int(r)}}"
+  defp _compute_eq(equation, op) do
+    Regex.replace(@regexes[op], equation, fn _, l, op, r ->
+      "#{_compute({_to_int(l), op, _to_int(r)})}"
     end)
   end
 
@@ -62,8 +59,17 @@ defmodule Calculator do
   defp _compute({left, "/", right}), do: div(left, right)
   defp _compute({left, "+", right}), do: left + right
   defp _compute({left, "-", right}), do: left - right
+
+  defp _match?(op, equation) do
+    case Regex.match?(@regexes[op], equation) do
+      true -> :match
+      false -> :no_match
+    end
+  end
+
   defp _to_int str do
-    {int, _ } = Integer.parse(str)
-    int
+    case Integer.parse(str) do
+      {int, _ } -> int
+    end
   end
 end

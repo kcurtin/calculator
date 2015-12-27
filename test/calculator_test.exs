@@ -34,12 +34,15 @@ defmodule CalculatorTest do
     assert Calculator.calculate("20 / 2 / 2") == "5"
   end
 
-
   test "multi before division" do
     assert Calculator.calculate("24 / 2 * 2 * 2") == "3"
   end
 
   test "division before addition" do
     assert Calculator.calculate("12 + 12 / 2 / 2") == "15"
+  end
+
+  test "order of ops with parens" do
+    assert Calculator.calculate("(12 + 12) * 2") == "48"
   end
 end
