@@ -21,52 +21,42 @@ defmodule Calculator.CLI do
   end
 end
 
-# Start from inner most parens
-# Replace paren range with calc
-# Move out a level of parens
-# Repeate
-
 defmodule Calculator do
-  @regexes [
+  @eq_regexes [
     {"*", ~r/(\d+)(\*)(\d+)/},
     {"/", ~r/(\d+)(\/)(\d+)/},
     {"+", ~r/(\d+)(\+)(\d+)/},
     {"-", ~r/(\d+)(\-)(\d+)/}
   ]
 
+  @inner_parens_regex ~r/\(([^()]+)\)/
+
   def calculate(equation) do
     "(#{equation})"
     |> String.replace(" ", "")
-    |> solve(:continue)
+    |> solve(:match)
   end
 
-  defp solve(equation, :done), do: equation
+  defp solve(equation, :no_match), do: equation
+  defp solve(equation, :match), do: solve(compute_chunk(equation), _match?(@inner_parens_regex, equation))
 
-  defp solve(equation, :continue) do
-    inner_parens_regex = ~r/\(([^()]+)\)/
-
-    if Regex.match?(inner_parens_regex, equation) do
-      str = Regex.replace(inner_parens_regex, equation, fn _, chunk ->
-        solve_chunk(chunk, :start)
-      end)
-      solve(str, :continue)
-    else
-      solve(equation, :done)
-    end
-  end
-
-  defp solve_chunk(chunk, :done),         do: solve(chunk, :continue)
-  defp solve_chunk(chunk, :start),        do: solve_chunk(chunk, "*", :continue)
-  defp solve_chunk(chunk, op, :continue), do: solve_chunk(chunk, op, _match?(op, chunk))
-
-  defp solve_chunk(chunk, op,  :match),    do: solve_chunk(compute_eq(chunk, op), op, :continue)
+  defp solve_chunk(chunk, :done), do: chunk
+  defp solve_chunk(chunk, :start), do: solve_chunk(chunk, "*", :continue)
+  defp solve_chunk(chunk, op, :continue), do: solve_chunk(chunk, op, _match?(@eq_regexes[op], chunk))
+  defp solve_chunk(chunk, op,  :match), do: solve_chunk(compute_eq(chunk, op), op, :continue)
   defp solve_chunk(chunk, "*", :no_match), do: solve_chunk(chunk, "/", :continue)
   defp solve_chunk(chunk, "/", :no_match), do: solve_chunk(chunk, "+", :continue)
   defp solve_chunk(chunk, "+", :no_match), do: solve_chunk(chunk, "-", :continue)
   defp solve_chunk(chunk, "-", :no_match), do: solve_chunk(chunk, :done)
 
+  defp compute_chunk(equation) do
+    Regex.replace(@inner_parens_regex, equation, fn _, chunk ->
+      solve_chunk(chunk, :start)
+    end)
+  end
+
   defp compute_eq(chunk, op) do
-    Regex.replace(@regexes[op], chunk, fn _, l, op, r ->
+    Regex.replace(@eq_regexes[op], chunk, fn _, l, op, r ->
       "#{compute({to_int(l), op, to_int(r)})}"
     end)
   end
@@ -76,8 +66,8 @@ defmodule Calculator do
   defp compute({left, "+", right}), do: left + right
   defp compute({left, "-", right}), do: left - right
 
-  defp _match?(op, hunk) do
-    case Regex.match?(@regexes[op], hunk) do
+  defp _match?(regex, chunk) do
+    case Regex.match?(regex, chunk) do
       true -> :match
       false -> :no_match
     end
