@@ -8,7 +8,7 @@ defmodule Calculator.CLI do
   end
 
   def process(options) do
-    Calculator.calculate options[:c]
+    IO.puts Calculator.calculate options[:c]
   end
 
   def parse_args(args) do
