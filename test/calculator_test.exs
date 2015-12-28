@@ -45,4 +45,8 @@ defmodule CalculatorTest do
   test "order of ops with parens" do
     assert Calculator.calculate("(12 + 12) * 2") == "48"
   end
+
+  test "complicated order of ops with parens" do
+    assert Calculator.calculate("(12 + 12 + (3 - 2)) * 2 / (5 + 5)") == "5"
+  end
 end
