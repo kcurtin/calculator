@@ -23,10 +23,10 @@ end
 
 defmodule Calculator do
   @eq_regexes [
-    {"*", ~r/(\d+)(\*)(\d+)/},
-    {"/", ~r/(\d+)(\/)(\d+)/},
-    {"+", ~r/(\d+)(\+)(\d+)/},
-    {"-", ~r/(\d+)(\-)(\d+)/}
+    *: ~r/(\d+)(\*)(\d+)/,
+    /: ~r/(\d+)(\/)(\d+)/,
+    +: ~r/(\d+)(\+)(\d+)/,
+    -: ~r/(\d+)(\-)(\d+)/
   ]
 
   @inner_parens_regex ~r/\(([^()]+)\)/
@@ -38,11 +38,15 @@ defmodule Calculator do
   end
 
   defp solve(equation, :no_match), do: equation
-  defp solve(equation, :match), do: solve(compute_chunk(equation), _match?(@inner_parens_regex, equation))
+  defp solve(equation, :match) do
+    solve(compute_chunk(equation), _match?(@inner_parens_regex, equation))
+  end
 
   defp solve_chunk(chunk, :done), do: chunk
   defp solve_chunk(chunk, :start), do: solve_chunk(chunk, "*", :continue)
-  defp solve_chunk(chunk, op, :continue), do: solve_chunk(chunk, op, _match?(@eq_regexes[op], chunk))
+  defp solve_chunk(chunk, op, :continue) do
+    solve_chunk(chunk, op, _match?(@eq_regexes[String.to_atom(op)], chunk))
+  end
   defp solve_chunk(chunk, op,  :match), do: solve_chunk(compute_eq(chunk, op), op, :continue)
   defp solve_chunk(chunk, "*", :no_match), do: solve_chunk(chunk, "/", :continue)
   defp solve_chunk(chunk, "/", :no_match), do: solve_chunk(chunk, "+", :continue)
@@ -56,15 +60,16 @@ defmodule Calculator do
   end
 
   defp compute_eq(chunk, op) do
-    Regex.replace(@eq_regexes[op], chunk, fn _, l, op, r ->
+    Regex.replace(@eq_regexes[String.to_atom(op)], chunk, fn _, l, op, r ->
       "#{compute({to_int(l), op, to_int(r)})}"
     end)
   end
 
-  defp compute({left, "*", right}), do: left * right
-  defp compute({left, "/", right}), do: div(left, right)
-  defp compute({left, "+", right}), do: left + right
-  defp compute({left, "-", right}), do: left - right
+  defp compute({left, op, right}) do
+    Kernel
+    |> apply(String.to_atom(op), [left, right])
+    |> round
+  end
 
   defp _match?(regex, chunk) do
     case Regex.match?(regex, chunk) do
