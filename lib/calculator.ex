@@ -22,13 +22,6 @@ defmodule Calculator.CLI do
 end
 
 defmodule Calculator do
-  @eq_regexes [
-    *: ~r/(\d+)(\*)(\d+)/,
-    /: ~r/(\d+)(\/)(\d+)/,
-    +: ~r/(\d+)(\+)(\d+)/,
-    -: ~r/(\d+)(\-)(\d+)/
-  ]
-
   @inner_parens_regex ~r/\(([^()]+)\)/
 
   def calculate(equation) do
@@ -45,13 +38,18 @@ defmodule Calculator do
   defp solve_chunk(chunk, :done), do: chunk
   defp solve_chunk(chunk, :start), do: solve_chunk(chunk, "*", :continue)
   defp solve_chunk(chunk, op, :continue) do
-    solve_chunk(chunk, op, _match?(@eq_regexes[String.to_atom(op)], chunk))
+    solve_chunk(chunk, op, _match?(op_to_regex(op), chunk))
   end
   defp solve_chunk(chunk, op,  :match), do: solve_chunk(compute_eq(chunk, op), op, :continue)
   defp solve_chunk(chunk, "*", :no_match), do: solve_chunk(chunk, "/", :continue)
   defp solve_chunk(chunk, "/", :no_match), do: solve_chunk(chunk, "+", :continue)
   defp solve_chunk(chunk, "+", :no_match), do: solve_chunk(chunk, "-", :continue)
   defp solve_chunk(chunk, "-", :no_match), do: solve_chunk(chunk, :done)
+
+  defp op_to_regex(op) do
+    {:ok, regexp} = Regex.compile("(\\d+)(\\#{op})(\\d+)")
+    regexp
+  end
 
   defp compute_chunk(equation) do
     Regex.replace(@inner_parens_regex, equation, fn _, chunk ->
@@ -60,9 +58,8 @@ defmodule Calculator do
   end
 
   defp compute_eq(chunk, op) do
-    Regex.replace(@eq_regexes[String.to_atom(op)], chunk, fn _, l, op, r ->
-      "#{compute({to_int(l), op, to_int(r)})}"
-    end)
+    op_to_regex(op)
+    |> Regex.replace(chunk, fn _, l, op, r -> "#{compute({to_int(l), op, to_int(r)})}" end)
   end
 
   defp compute({left, op, right}) do
